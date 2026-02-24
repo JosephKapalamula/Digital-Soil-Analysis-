@@ -1,0 +1,16 @@
+torch==2.10.0+cpu
+torchvision==0.25.0+cpu
+fastapi==0.132.0
+uvicorn==0.41.0
+sqlalchemy==2.0.46
+psycopg2-binary==2.9.11
+geoalchemy2==0.18.1
+numpy==2.4.2
+pandas==3.0.1
+scikit-learn==1.8.0
+joblib==1.5.3
+earthengine-api==1.7.15
+geopandas==1.1.2
+shapely==2.1.2
+python-dotenv==1.2.1
+pydantic-settings==2.13.1

@@ -1,0 +1,30 @@
+[project]
+name = "digital-soil-backend"
+version = "0.1.0"
+dependencies = [
+    "torch",
+    "torchvision",
+    "fastapi",
+    "uvicorn[standard]",
+    "sqlalchemy",
+    "psycopg2-binary",
+    "geoalchemy2",
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "joblib",
+    "earthengine-api",
+    "geopandas",
+    "shapely",
+    "python-dotenv",
+    "pydantic-settings",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true  # This is the key: it prevents markupsafe errors
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+torchvision = [{ index = "pytorch-cpu" }]

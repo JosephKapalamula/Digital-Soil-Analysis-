@@ -1,0 +1,22 @@
+# Environment files
+.env
+.venv/
+
+# Google Earth Engine key (SECRET)
+gee-key.json
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
