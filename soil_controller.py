@@ -1,6 +1,5 @@
 import ee
 import json
-import pandas as pd
 import numpy as np
 import torch
 from fastapi import Depends
@@ -9,19 +8,17 @@ from sqlalchemy import func
 from app.schemas.soil_schema import SoilAnalysisRecord
 from app.core.config import settings
 from app.ml.model import soil_nutrient_model, crop_recommendation_model
-from app.ml.scalers import load_scalers
-from app.ml.report_on_recommended_crop import generate_farmer_report
-import shap
 
-# SATELLITE_BANDS = [
-#     'B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B11', 'B12', 
-#     'elevation', 'slope'
-# ]
-MODEL_A_BANDS = ['B2', 'B3', 'B4', 'B8']
+
+SATELLITE_BANDS = [
+    'B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B11', 'B12', 
+    'elevation', 'slope'
+]
 
 def extract_soil_features(lat, lon):
     infor=json.loads(settings.GEE_SERVICE_ACCOUNT_JSON)
     infor["private_key"] = infor["private_key"].replace("\\n", "\n")
+    print(infor)
     credentials = ee.ServiceAccountCredentials(
         infor["client_email"],
         key_data=json.dumps(infor)
@@ -43,7 +40,7 @@ def extract_soil_features(lat, lon):
     sample= combined.reduceRegion(
         reducer=ee.Reducer.first(),
         geometry=point,
-        scale=10 #20
+        scale=20
     ).getInfo() 
     
     if not sample:
@@ -51,30 +48,19 @@ def extract_soil_features(lat, lon):
         
     return sample
 
-def recommend_crop(scalers,nutrients):
-    feature_names = ['ph', 'nitrogen', 'phosphorus', 'potassium', 'latitude', 'longitude']
-    raw_nutrients = pd.DataFrame([nutrients], columns=feature_names)
-    scaled_nutrients=scalers["scaler_b_crops"].transform(raw_nutrients)
-    predicted_crop = scalers["crop_recommendation_model"].predict(scaled_nutrients)
-    recommended_crop = scalers["crop_encoder"].inverse_transform([predicted_crop])[0]
-    feature_names = ['pH', 'Nitrogen', 'Phosphorus', 'Potassium', 'Latitude', 'Longitude']
-
-    explainer = shap.TreeExplainer(scalers["crop_recommendation_model"])
-    shap_values = explainer.shap_values(scaled_nutrients)
-    if isinstance(shap_values, list):
-        # Older SHAP returns list of arrays
-        current_shap = shap_values[predicted_crop[0]][0]
-    elif hasattr(shap_values, "values"):
-        # SHAP Explanation object - extract raw values
-        # Shape: (samples, features, classes)
-        current_shap = shap_values.values[0, :, predicted_crop[0]]
+def recommend_crop(nutrients):
+    """
+    Logic for Stage 2. This could be a second PyTorch model 
+    or a Random Forest logic as per your Phase 3.
+    """
+    print(f"model {crop_recommendation_model}")
+    # Example Decision Tree logic for Malawi context
+    if nutrients["pH"] < 5.5:
+        return "Groundnuts (Tolerance to acidity)"
+    elif nutrients["Nitrogen"] > 0.2 and nutrients["pH"] > 6.0:
+        return "Maize (Hybrid)"
     else:
-        # Standard Numpy Array
-        current_shap = shap_values[0, :, predicted_crop[0]]
-
-    report=generate_farmer_report(recommended_crop, nutrients, current_shap)
-    print(f"report: {report}")
-    return recommended_crop, report
+        return "Soybeans"
 
 def run_full_analysis( lat: float, lon: float,db: Session):
     # 1. Feature Extraction (The "Long Pixel" pierce)
@@ -98,7 +84,7 @@ def run_full_analysis( lat: float, lon: float,db: Session):
                     "Phosphorus": existing_record.actual_phosphorus,
                     "Potassium": existing_record.actual_potassium
                 },
-                "crop": existing_record.actual_recommended_crop,  
+                "crop": existing_record.actual_recommended_crop,
                 "raw_features": existing_record.raw_satellite_data
             }
         
@@ -118,69 +104,56 @@ def run_full_analysis( lat: float, lon: float,db: Session):
         }
     
     print("🛰️ Cache Miss. Fetching new data from Google Earth Engine...")
-    # raw_features = extract_soil_features(lat, lon)
-    # ordered_features = {band: raw_features.get(band, 0) for band in SATELLITE_BANDS}
-    raw_bands = extract_soil_features(lat, lon)
-    input_data = [
-    raw_bands['B2'], # Blue
-    raw_bands['B3'], # Green
-    raw_bands['B4'], # Red
-    raw_bands['B8'], # NIR
-    lat,
-    lon
-]
-    scalers = load_scalers()
-    # # IMPORTANT: Ensure the order matches your training CSV (B1, B2... Elevation)
-    # feature_vector = np.array([list(ordered_features.values())], dtype=np.float32)
-    # scaled_features = scalers["scaler_X"].transform(feature_vector)
-    # # 2. Stage 1: Predict Soil Chemistry (placeholder - needs model)
-    feature_names = ['band_blue', 'band_green', 'band_red', 'band_nir', 'latitude', 'longitude']
-    feature_vector=pd.DataFrame([input_data], columns=feature_names)
-    scaled_features = scalers["scaler_x"].transform(feature_vector)
+    # This calls your GEE logic
+    print(f"model {soil_nutrient_model}")
+    raw_features = extract_soil_features(lat, lon)
+    ordered_features = {band: raw_features.get(band, 0) for band in SATELLITE_BANDS}
+
+    # IMPORTANT: Ensure the order matches your training CSV (B1, B2... Elevation)
+    feature_vector = np.array([list(ordered_features.values())], dtype=np.float32)
+    input_tensor = torch.from_numpy(feature_vector)
+
+    # 2. Stage 1: Predict Soil Chemistry (placeholder - needs model)
     with torch.no_grad():
-        # Model A predicts scaled nutrients (0 to 1)
-        preds_scaled = scalers["nutrient_model"].predict(scaled_features)
-        # Inverse scale to get real soil values [pH, N, P, K]
-        preds_real = scalers["scaler_y"].inverse_transform(preds_scaled)[0]
-        confidence = 0.85
+        # predictions = model(input_tensor).numpy()[0]  # TODO: Load actual model
+        predictions = np.array([6.5, 0.15, 0.08, 0.12])  # Placeholder: [pH, N, P, K]
+        calculated_ai_confidence = 0.88
         
-    nutrients =[
-        float(preds_real[0]),
-        float(preds_real[1]),
-        float(preds_real[2]),
-        float(preds_real[3]),
-        lat,
-        lon
-    ]
+    nutrients = {
+        "pH": float(predictions[0]),
+        "Nitrogen": float(predictions[1]),
+        "Phosphorus": float(predictions[2]),
+        "Potassium": float(predictions[3])
+    }
 
     # 3. Stage 2: Agronomic Decision (Crop Recommendation)
-    recommended_crop,report = recommend_crop(scalers,nutrients)
+    recommended_crop = recommend_crop(nutrients)
     #adding to the database 
     new_record = SoilAnalysisRecord(
         latitude=lat,
         longitude=lon,
-        ph=nutrients[0],
-        nitrogen=nutrients[1],
-        phosphorus=nutrients[2],
-        potassium=nutrients[3],
+        ph=nutrients["pH"],
+        nitrogen=nutrients["Nitrogen"],
+        phosphorus=nutrients["Phosphorus"],
+        potassium=nutrients["Potassium"],
         recommended_crop=recommended_crop,
-        ai_confidence=confidence,
-        raw_satellite_data=raw_bands # This saves all 13 bands as a JSON blob
+        ai_confidence=calculated_ai_confidence,
+        raw_satellite_data=ordered_features # This saves all 13 bands as a JSON blob
     )
+    
     # Save to database
     db.add(new_record)
     db.commit()
     db.refresh(new_record)
-    print("pass3")
+
     return {
-    "source": "new_prediction",
-    "confidence": float(confidence),
-    "nutrients": [float(x) for x in nutrients],
-    "crop": str(recommended_crop),
-    "raw_features": feature_vector.values.tolist(), # <--- THIS FIXES THE ERROR
-    "report": report
-     }
-      
+        "source": "new_prediction",
+        "confidence": calculated_ai_confidence,
+        "nutrients": nutrients,
+        "crop": recommended_crop,
+        "raw_features": ordered_features
+    }
+
 
 def updating_ground_truth(
     lat: float, 
@@ -205,6 +178,7 @@ def updating_ground_truth(
             status_code=404, 
             detail="No ground truth record found at these exact coordinates to update."
         )
+
     # 2. Apply the corrections
     record.actual_ph = actual_ph
     record.actual_nitrogen = actual_nitrogen

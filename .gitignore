@@ -20,3 +20,5 @@ Thumbs.db
 
 # Logs
 *.log
+*.ipynb
+create_tables.py
