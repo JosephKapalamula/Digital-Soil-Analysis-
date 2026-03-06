@@ -75,8 +75,8 @@ def recommend_crop(scalers,nutrients):
     return recommended_crop, report
 
 def run_full_analysis( lat: float, lon: float,db: Session):
-    lat=-13.969802255525753
-    lon=33.73717904090882
+    # lat=-13.969802255525753
+    # lon=33.73717904090882
     # 1. Feature Extraction (The "Long Pixel" pierce)
     #Cache search for fast update
     threshold = 0.000001 

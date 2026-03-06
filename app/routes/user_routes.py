@@ -21,7 +21,7 @@ def create_user(req: UserCreate, db: Session = Depends(get_db)):
         hashed_password = hash_password(req.password)
         print("creating token")
         token = create_access_token({"sub": req.email})
-        print("creating user2")
+        print("creating user2") 
         new_user = User(
             username=req.username,
             email=req.email,
@@ -42,10 +42,10 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         #checking if user exists
         user = db.query(User).filter(User.email == req.email).first()
         if not user:
-            raise HTTPException(status_code=400, detail="User does not exist")
+            raise HTTPException(status_code=400, detail="Invalid email or password")
         #checking if password is correct
         if not verify_password(req.password, user.hashed_password):
-            raise HTTPException(status_code=400, detail="Invalid password")
+            raise HTTPException(status_code=400, detail="Invalid email or password")
        
         #creating token
         token = create_access_token({"sub": user.email})

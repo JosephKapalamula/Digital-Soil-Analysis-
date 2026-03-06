@@ -24,12 +24,11 @@ app = FastAPI(
 
 # Configure CORS for all origins in production
 origins = [
-    "http://10.90.166.46:3000", # current frontend IP
-    "http://localhost:3000",    # Standard local react/next dev
-    "http://127.0.0.1:3000",
-    "https://digital-soil-analysis-i1dhey0ob-joseph-kapalamulas-projects.vercel.app"
+       # Standard local react/next dev
+    "https://digital-soil-analysis.vercel.app"
 ]
-
+# "http://10.90.166.46:3000", # current frontend IP
+#  http://localhost:3000", 
 # Allow all origins in production for debugging
 app.add_middleware(
     CORSMiddleware,
