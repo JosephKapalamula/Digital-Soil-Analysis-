@@ -10,9 +10,7 @@ WORKDIR /app
 # Copy requirements and install via uv
 COPY requirements.txt .
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
-RUN uv pip install --system --no-cache-dir \
-    --extra-index-url https://download.pytorch.org/whl/cpu \
-    -r requirements.txt
+RUN uv pip install --system --no-cache-dir -r requirements.txt
 
 # Ensure gunicorn is available as a command
 RUN python -m pip install --no-cache-dir gunicorn==23.0.0
