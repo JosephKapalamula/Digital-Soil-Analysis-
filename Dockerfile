@@ -13,4 +13,5 @@ RUN uv pip install --system -r requirements.txt
 COPY . .
 
 EXPOSE 8000
-CMD ["gunicorn", "-w", "1", "-k", "uvicorn.workers.UvicornWorker", "main:app", "--bind", "0.0.0.0:8000"]
+# Update the entry point to look inside the 'app' module
+CMD ["gunicorn", "-w", "1", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", "--bind", "0.0.0.0:8000"]
