@@ -16,6 +16,7 @@ origins = [
     "http://10.90.166.46:3000", # current frontend IP
     "http://localhost:3000",    # Standard local react/next dev
     "http://127.0.0.1:3000",
+    "https://digital-soil-analysis-i1dhey0ob-joseph-kapalamulas-projects.vercel.app"
 ]
 app.add_middleware(
     CORSMiddleware,

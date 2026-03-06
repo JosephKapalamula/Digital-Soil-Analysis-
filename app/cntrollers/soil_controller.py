@@ -77,6 +77,8 @@ def recommend_crop(scalers,nutrients):
     return recommended_crop, report
 
 def run_full_analysis( lat: float, lon: float,db: Session):
+    lat=-13.969802255525753
+    lon=33.73717904090882
     # 1. Feature Extraction (The "Long Pixel" pierce)
     #Cache search for fast update
     threshold = 0.000001 
@@ -89,34 +91,36 @@ def run_full_analysis( lat: float, lon: float,db: Session):
         # Check if we have high-quality Ground Truth first
         if existing_record.is_ground_truth and existing_record.confidence_score >= 0.8:
             print("💎 Lab Data Hit! Returning verified ground truth.")
+            nutrients_list = [{
+                "pH": float(existing_record.actual_ph),
+                "Nitrogen": float(existing_record.actual_nitrogen),
+                "Phosphorus":float(existing_record.actual_phosphorus),
+                "Potassium": float(existing_record.actual_potassium)
+                }]
             return {
                 "source": "ground_truth",
-                "confidence": existing_record.confidence_score,
-                "nutrients": {
-                    "pH": existing_record.actual_ph,
-                    "Nitrogen": existing_record.actual_nitrogen,
-                    "Phosphorus": existing_record.actual_phosphorus,
-                    "Potassium": existing_record.actual_potassium
-                },
-                "crop": existing_record.actual_recommended_crop,  
-                "raw_features": existing_record.raw_satellite_data
-            }
+                "confidence": float(existing_record.confidence_score),
+                "nutrients": nutrients_list,
+                "crop": str(existing_record.actual_recommended_crop),
+}
         
         # If no ground truth, but a prediction exists
         print("Cache Hit! Returning previous AI prediction.")
+        nutrients_list = [{
+        "pH": float(existing_record.ph),
+        "Nitrogen":  float(existing_record.nitrogen),
+        "Phosphorus": float(existing_record.phosphorus),
+        "Potassium":  float(existing_record.potassium)
+         }]
         return {
-            "source": "prediction_cache",
-            "confidence": existing_record.ai_confidence,
-            "nutrients": {
-                "pH": existing_record.ph,
-                "Nitrogen": existing_record.nitrogen,
-                "Phosphorus": existing_record.phosphorus,
-                "Potassium": existing_record.potassium
-            },
-            "crop": existing_record.recommended_crop,
-            "raw_features": existing_record.raw_satellite_data
+            "source": "prediction_cache", # or "ground_truth" / "new_prediction"
+            "confidence": float(existing_record.ai_confidence), 
+            "nutrients":nutrients_list,
+            "crop": str(existing_record.recommended_crop),
+            # "report": str(report)
         }
-    
+                        
+    print(f"lati {lat},long {lon}")
     print("🛰️ Cache Miss. Fetching new data from Google Earth Engine...")
     # raw_features = extract_soil_features(lat, lon)
     # ordered_features = {band: raw_features.get(band, 0) for band in SATELLITE_BANDS}
@@ -152,7 +156,12 @@ def run_full_analysis( lat: float, lon: float,db: Session):
         lat,
         lon
     ]
-
+    nutrients_dict={
+                "pH": float(preds_real[0]),
+                "Nitrogen": float(preds_real[1]),
+                "Phosphorus": float(preds_real[2]),
+                "Potassium": float(preds_real[3])
+            },
     # 3. Stage 2: Agronomic Decision (Crop Recommendation)
     recommended_crop,report = recommend_crop(scalers,nutrients)
     #adding to the database 
@@ -167,17 +176,16 @@ def run_full_analysis( lat: float, lon: float,db: Session):
         ai_confidence=confidence,
         raw_satellite_data=raw_bands # This saves all 13 bands as a JSON blob
     )
-    # Save to database
+    # Save to database 
     db.add(new_record)
     db.commit()
     db.refresh(new_record)
     print("pass3")
     return {
-    "source": "new_prediction",
+    "source": "new_prediction", 
     "confidence": float(confidence),
-    "nutrients": [float(x) for x in nutrients],
+    "nutrients": nutrients_dict,
     "crop": str(recommended_crop),
-    "raw_features": feature_vector.values.tolist(), # <--- THIS FIXES THE ERROR
     "report": report
      }
       
