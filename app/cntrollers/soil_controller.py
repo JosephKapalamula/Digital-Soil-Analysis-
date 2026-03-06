@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.schemas.soil_schema import SoilAnalysisRecord
 from app.core.config import settings
-from app.ml.model import soil_nutrient_model, crop_recommendation_model
 from app.ml.scalers import load_scalers
 from app.ml.report_on_recommended_crop import generate_farmer_report
 import shap
