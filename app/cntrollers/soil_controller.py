@@ -2,7 +2,6 @@ import ee
 import json
 import pandas as pd
 import numpy as np
-import torch
 from fastapi import Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -140,12 +139,11 @@ def run_full_analysis( lat: float, lon: float,db: Session):
     feature_names = ['band_blue', 'band_green', 'band_red', 'band_nir', 'latitude', 'longitude']
     feature_vector=pd.DataFrame([input_data], columns=feature_names)
     scaled_features = scalers["scaler_x"].transform(feature_vector)
-    with torch.no_grad():
-        # Model A predicts scaled nutrients (0 to 1)
-        preds_scaled = scalers["nutrient_model"].predict(scaled_features)
-        # Inverse scale to get real soil values [pH, N, P, K]
-        preds_real = scalers["scaler_y"].inverse_transform(preds_scaled)[0]
-        confidence = 0.85
+    # Model A predicts scaled nutrients (0 to 1)
+    preds_scaled = scalers["nutrient_model"].predict(scaled_features)
+    # Inverse scale to get real soil values [pH, N, P, K]
+    preds_real = scalers["scaler_y"].inverse_transform(preds_scaled)[0]
+    confidence = 0.85
         
     nutrients =[
         float(preds_real[0]),
