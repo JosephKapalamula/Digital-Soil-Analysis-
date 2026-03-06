@@ -51,6 +51,7 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         token = create_access_token({"sub": user.email})
         return {"status":"success", "message": "User logged in successfully", "token": token,"username": user.username}
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail=str(e)) 
  
 @user_router.put("/update-user")
